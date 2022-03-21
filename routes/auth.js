@@ -34,13 +34,15 @@ router.post('/logout', (req, res, next) => {
   res.clearCookie('_token').clearCookie('_token_reset').clearCookie('_filter').sendStatus(200);
 })
 
-router.post('/reset', (req, res, next) => {
+router.post('/reset', async (req, res, next) => {
   if (!req.cookies._token_reset) return res.sendStatus(403);
-  jwt.verify(req.cookies._token_reset, process.env.JWT_SECRET_RESET, (err, decoded) => {
+  jwt.verify(req.cookies._token_reset, process.env.JWT_SECRET_RESET, async (err, decoded) => {
     if (err) { 
       return res.clearCookie('_token').clearCookie('_token_reset').clearCookie('_filter').sendStatus(403); 
     }
-    const user = { id: decoded.id, app_id: decoded.app_id };
+    app_id = (await apps.index(decoded.id)).map((val) => val.id);
+
+    const user = { id: decoded.id, app_id };
     const token = jwt.sign(tokenSign(user), process.env.JWT_SECRET);
     const tokenReset = jwt.sign(tokenResetSign(user, token), process.env.JWT_SECRET_RESET);
     
