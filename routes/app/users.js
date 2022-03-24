@@ -7,7 +7,7 @@ const router = express.Router();
 /* Get users datatable */
 router.get('/datatable', async (req, res, next) => {
   try {
-    const data = await user.datatable({...req.query, appId: req.appId, filter: req.filter});  
+    const data = await user.datatable(req);  
     res.json({
       widget_title: 'List Users',
       widget_data: {
@@ -16,11 +16,12 @@ router.get('/datatable', async (req, res, next) => {
           identifier: 'Username',
           name: 'Name',
           email: 'Email',
-          is_active: 'Status',      
+          app_name: 'App Name',
+          is_active: 'Status',
         },
         t_body: data,
-        order_col: ['id', 'identifier', 'name', 'email', 'is_active'],
-        total_data: (await user.totalData(req.appId, req.filter)).total_data,
+        order_col: ['id', 'identifier', 'name', 'email', 'app_name', 'is_active'],
+        total_data: (await user.totalData(req)).total_data,
         base_endpoint: `${process.env.BASE_URL}/users/datatable`,
       }
     })
@@ -35,12 +36,12 @@ router.get('/datatable', async (req, res, next) => {
 
 /* GET users index */
 router.get('/', async (req, res, next) => {
-  res.json(await user.index(req.appId));
+  res.json(await user.index(req));
 });
 
 /* GET users show */
-router.get('/show', async (req, res, next) => {
-  res.json(await user.show(req.userId))
+router.get('/:id', async (req, res, next) => {
+  res.json(await user.show(req))
 });
 
 /* POST users store */

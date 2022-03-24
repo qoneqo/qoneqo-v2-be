@@ -5,6 +5,7 @@ const fields = [
   'a.name',
   'a.logo',
   'a.type',
+  // 'a.created_by',
   'a.created_at',
   'a.updated_at',
 ];
@@ -14,14 +15,14 @@ const fields = [
  * ===========================================================================================
  */
 
-const datatable = async ({ limit, offset, order, id, filter }) => {
+const datatable = async ({ query: {limit, offset, order}, userId, filter }) => {
   const queryLimit = limit ? 'LIMIT ?' : '';
   const queryOffset = offset ? 'OFFSET ?' : '';
   const queryOrder = order ? `ORDER BY a.${order}` : '';
   
   
   let paramsSelect = [' AND au.user_id = ?'];
-  let paramsValue = [id];
+  let paramsValue = [userId];
   if (filter.app_list_selected?.id) {
     paramsSelect = [...paramsSelect, ' AND a.id = ?'];
     paramsValue = [...paramsValue, filter.app_list_selected.id];
@@ -29,14 +30,20 @@ const datatable = async ({ limit, offset, order, id, filter }) => {
   paramsSelect = paramsSelect.toString().replaceAll(',', '');
 
   return await pool.query(
-    `SELECT ${fields} FROM apps a INNER JOIN app_user au ON a.id = au.app_id WHERE a.deleted_at IS NULL ${paramsSelect} ${queryOrder} ${queryLimit} ${queryOffset}`,
+    `SELECT
+      ${fields}
+    FROM
+      apps a
+      INNER JOIN app_user au ON a.id = au.app_id
+    WHERE
+      a.deleted_at IS NULL ${paramsSelect} ${queryOrder} ${queryLimit} ${queryOffset}`,
     [...paramsValue, Number(limit), Number(offset)]
   );
 };
 
-const totalData = async (id, filter) => {  
+const totalData = async ({userId, filter}) => {
   let paramsSelect = [' AND au.user_id = ?'];
-  let paramsValue = [id];
+  let paramsValue = [userId];
   if (filter.app_list_selected?.id) {
     paramsSelect = [...paramsSelect, ' AND a.id = ?'];
     paramsValue = [...paramsValue, filter.app_list_selected.id];
@@ -45,7 +52,13 @@ const totalData = async (id, filter) => {
   
   return (
     await pool.query(
-      `SELECT COUNT(*) AS total_data FROM apps a INNER JOIN app_user au ON a.id = au.app_id WHERE a.deleted_at IS NULL ${paramsSelect}`,
+      `SELECT
+        COUNT(*) AS total_data
+      FROM
+        apps a
+        INNER JOIN app_user au ON a.id = au.app_id
+      WHERE
+        a.deleted_at IS NULL ${paramsSelect}`,
       [...paramsValue]
     )
   )[0];
@@ -56,53 +69,79 @@ const totalData = async (id, filter) => {
  * ===========================================================================================
  */
 
-const index = async (id) => {
+const index = async ({userId}) => {
   return await pool.query(
-    `SELECT ${fields} FROM apps a INNER JOIN app_user au ON a.id = au.app_id WHERE a.deleted_at IS NULL AND au.user_id = ?`,
-    [id]
+    `SELECT
+      ${fields}
+    FROM
+      apps a
+      INNER JOIN app_user au ON a.id = au.app_id
+    WHERE
+      a.deleted_at IS NULL
+      AND au.user_id = ?`,
+    [userId]
   );
 };
 
-const show = async (id) =>
+const show = async ({params: {id}, userId}) =>
 (
   await pool.query(
-    `SELECT ${fields} FROM apps a WHERE a.deleted_at IS NULL AND a.id = ?`,
-    [id]
+    `SELECT
+      ${fields}
+    FROM
+      apps a
+      INNER JOIN app_user au ON a.id = au.app_id
+    WHERE
+      a.deleted_at IS NULL
+      AND a.id = ?
+      AND au.user_id = ?`,
+    [id, userId]
   )
 )[0];
 
-const store = async ({ name, logo, type }, req) => {
-  const payload = { name, logo, type };
+const store = async ({ body: {name, logo, type}, userId }) => {
+  const payload = { name, logo, type, created_by: userId };
   try {
     conn = await util.promisify(pool.getConnection).bind(pool)();
     await conn.beginTransaction();
     const res = await util.promisify(conn.query).bind(conn)('INSERT INTO apps SET ?', [payload]);
-    const payload2 = { app_id: res.insertId, user_id: req.userId};
-    await util.promisify(conn.query).bind(conn)('INSERT INTO app_user SET ?', [payload2])
     const res2 = (await util.promisify(conn.query).bind(conn)(`SELECT ${fields} FROM apps a WHERE id = ?`, [res.insertId]))[0];
     await conn.commit();
     return res2;
   } catch (error) {
+    console.log(error)
     return 0;    
   }
 };
 
-const update = async ({ name, logo, type }, id) => {
+const update = async ({ params: {id}, body: {name, logo, type}, userId }) => {
   const payload = { name, logo, type };
+  // const now = require('moment')().format('YYYY-MM-DD HH:mm:ss');
   return await pool.query(
-    `Update apps a SET a.name = ?, a.logo = ?, a.type = ? WHERE a.deleted_at IS NULL AND a.id = ?`,
-    [...Object.values(payload).map(val => val), id]
+    `Update
+        apps a
+      SET
+        a.name = ?,
+        a.logo = ?,
+        a.type = ?,
+        a.updated_at = NOW()
+      WHERE
+        a.deleted_at IS NULL
+        AND a.id = ?`,
+      [...Object.values(payload).map(val => val), id]
   )
 };
 
-const destroy = async (id) => {
-  const now = require('moment')().format('YYYY-MM-DD HH:mm:ss');
-  return ( 
-    await pool.query(
-      `UPDATE apps a SET a.deleted_at = ? WHERE a.id = ?`,
-      [now, id]
-    )
-  )[0];
+const destroy = async ({params: {id}, userId}) => {
+  return await pool.query(
+    `UPDATE
+        apps a
+      SET
+        a.deleted_at = NOW()
+      WHERE
+        a.id = ?`,
+      [id]
+  )[0]
 }
 
 
