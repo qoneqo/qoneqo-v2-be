@@ -18,7 +18,7 @@ const fields = [
 const datatable = async ({ query: {limit, offset, order}, userId, filter }) => {
   const queryLimit = limit ? 'LIMIT ?' : '';
   const queryOffset = offset ? 'OFFSET ?' : '';
-  const queryOrder = order ? `ORDER BY a.${order}` : '';
+  const queryOrder = order ? `ORDER BY a.${order}` : 'ORDER BY a.id DESC';
   
   
   let paramsSelect = [' AND au.user_id = ?'];
@@ -109,12 +109,11 @@ const store = async ({ body: {name, logo, type}, userId }) => {
     await conn.commit();
     return res2;
   } catch (error) {
-    console.log(error)
     return 0;    
   }
 };
 
-const update = async ({ params: {id}, body: {name, logo, type}, userId }) => {
+const update = async ({ params: {id}, body: {name, logo, type} }) => {
   const payload = { name, logo, type };
   // const now = require('moment')().format('YYYY-MM-DD HH:mm:ss');
   return await pool.query(
@@ -132,7 +131,7 @@ const update = async ({ params: {id}, body: {name, logo, type}, userId }) => {
   )
 };
 
-const destroy = async ({params: {id}, userId}) => {
+const destroy = async ({params: {id}}) => {
   return await pool.query(
     `UPDATE
         apps a

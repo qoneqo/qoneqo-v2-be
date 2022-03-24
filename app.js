@@ -12,6 +12,8 @@ var appsRouter = require('./routes/app/apps');
 var usersRouter = require('./routes/app/users');
 var testingRouter = require('./routes/testing');
 
+var appService = require('./services/app/apps');
+
 var app = express();
 
 const jwt = require('jsonwebtoken');
@@ -22,14 +24,15 @@ const corsOption = {
 };
 
 // check _token
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   if (!req.cookies._token) return res.sendStatus(401);
-  jwt.verify(req.cookies._token, process.env.JWT_SECRET, (err, decoded) => {
+  jwt.verify(req.cookies._token, process.env.JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.clearCookie('_token').clearCookie('_token_reset').clearCookie('_filter').sendStatus(403);
     }
     req.userId = decoded.id;
-    req.appId = decoded.app_id;    
+    // req.appId = decoded.app_id;
+    req.appId = (await appService.index({userId: decoded.id})).map((val) => val.id);
     next();
   })
 }
