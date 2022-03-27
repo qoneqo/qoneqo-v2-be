@@ -16,11 +16,6 @@ const fields = [
  */
 
  const datatable = async ({ query: {limit, offset, order}, appId, filter }) => {
-  let GROUP_BY = '';
-  if(!filter.app_list_selected?.id) {
-    GROUP_BY = 'GROUP BY u.identifier';
-  }
-
   const queryLimit = limit ? 'LIMIT ?' : '';
   const queryOffset = offset ? 'OFFSET ?' : '';
   const queryOrder = order ? `ORDER BY u.${order}` : 'ORDER BY u.id DESC';
@@ -35,7 +30,7 @@ const fields = [
 
   return await pool.query(
     `SELECT
-      ${GROUP_BY ? '': 'a.name AS app_name,'}
+      a.name AS app_name,
       ${fields}      
     FROM
       users u
@@ -45,16 +40,12 @@ const fields = [
       u.deleted_at IS NULL
       AND au.deleted_at IS NULL     
       ${paramsSelect} 
-    ${GROUP_BY ? GROUP_BY : ''} ${queryOrder} ${queryLimit} ${queryOffset}`,
+    ${queryOrder} ${queryLimit} ${queryOffset}`,
     [...paramsValue, Number(limit), Number(offset)]
   );
 };
 
 const totalData = async ({appId, filter}) => {
-  let GROUP_BY = '';
-  if(!filter.app_list_selected?.id) {
-    GROUP_BY = 'GROUP BY u.identifier';
-  }
   let paramsSelect = [' AND au.app_id IN (?)'];
   let paramsValue = [appId];
   if (filter?.app_list_selected?.id) {
@@ -72,7 +63,7 @@ const totalData = async ({appId, filter}) => {
           INNER JOIN app_user au ON u.id = au.user_id
         WHERE
           u.deleted_at IS NULL 
-          AND au.deleted_at IS NULL ${paramsSelect} ${GROUP_BY ? GROUP_BY : ''}
+          AND au.deleted_at IS NULL ${paramsSelect} 
       ) AS c`,
       [...paramsValue]
     )

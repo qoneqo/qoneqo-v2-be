@@ -10,6 +10,7 @@ var authRouter = require('./routes/auth');
 var filterRouter = require('./routes/filter');
 var appsRouter = require('./routes/app/apps');
 var usersRouter = require('./routes/app/users');
+var rolesRouter = require('./routes/app/roles');
 var testingRouter = require('./routes/testing');
 
 var appService = require('./services/app/apps');
@@ -58,6 +59,7 @@ app.use('/auth', authRouter);
 app.use('/filter', authMiddleware, filterRouter);
 app.use('/apps', authMiddleware, checkFilterMiddleware, appsRouter);
 app.use('/users', authMiddleware, checkFilterMiddleware, usersRouter);
+app.use('/roles', authMiddleware, checkFilterMiddleware, rolesRouter);
 app.use('/testing', testingRouter);
  
 // catch 404 and forward to error handler
