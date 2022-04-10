@@ -1,10 +1,11 @@
 const pool = require('../../database/db');
 const util = require('util');
 const fields = [
-  'r.id',
-  'r.name',
-  'r.created_at',
-  'r.updated_at',
+  'ur.id',
+  'ur.user_id',
+  'ur.role_id',
+  'ur.created_at',
+  'ur.updated_at',
 ];
 
 /**
@@ -12,76 +13,65 @@ const fields = [
  * ===========================================================================================
  */
 
- const datatable = async ({ query: {limit, offset, order}, appId, filter }) => {
+ const datatable = async ({ params: {userId}, query: {limit, offset, order}, appId, filter }) => {
 
   const queryLimit = limit ? 'LIMIT ?' : '';
   const queryOffset = offset ? 'OFFSET ?' : '';
-  const queryOrder = order ? `ORDER BY r.${order}` : 'ORDER BY r.id DESC';
+  const queryOrder = order ? `ORDER BY ur.${order}` : 'ORDER BY ur.id DESC';
 
   let paramsSelect = [' AND a.id IN (?)'];
   let paramsValue = [appId];
   if (filter?.app_list_selected?.id) {
     paramsSelect = [...paramsSelect, ' AND a.id = ?'];
-    paramsValue = [...paramsValue, filter.app_list_selected.id];
+    paramsValue = [...paramsValue, filteur.app_list_selected.id];
   }
   paramsSelect = paramsSelect.toString().replaceAll(',', '');
 
   return await pool.query(
     `SELECT
       a.name AS app_name,
+      r.name AS role_name,
       ${fields}
     FROM
-      roles r
+      user_role ur
+      INNER JOIN roles r ON r.id = ur.role_id
       INNER JOIN apps a ON a.id = r.app_id
     WHERE
-      r.deleted_at IS NULL
+      ur.deleted_at IS NULL
       AND a.deleted_at IS NULL
+      AND ur.user_id = ?
       ${paramsSelect} 
     ${queryOrder} ${queryLimit} ${queryOffset}`,
-    [...paramsValue, Number(limit), Number(offset)]
+    [userId, ...paramsValue, Number(limit), Number(offset)]
   );
 };
 
-const totalData = async ({appId, filter}) => {
+const totalData = async ({params: {userId}, appId, filter}) => {
   let paramsSelect = [' AND a.id IN (?)'];
   let paramsValue = [appId];
   if (filter?.app_list_selected?.id) {
     paramsSelect = [...paramsSelect, ' AND a.id = ?'];
-    paramsValue = [...paramsValue, filter.app_list_selected.id];
+    paramsValue = [...paramsValue, filteur.app_list_selected.id];
   }
   paramsSelect = paramsSelect.toString().replaceAll(',', '');
 
   return (
     await pool.query(
       `SELECT COUNT(*) AS total_data FROM (
-        SELECT r.*
+        SELECT ur.*
         FROM
-          roles r
+          user_role ur
+          INNER JOIN roles r ON r.id = ur.role_id
           INNER JOIN apps a ON a.id = r.app_id
         WHERE
-          r.deleted_at IS NULL 
+          ur.deleted_at IS NULL 
           AND a.deleted_at IS NULL
+          AND ur.user_id = ?
           ${paramsSelect}
       ) AS c`,
-      [...paramsValue]
+      [userId, ...paramsValue]
     )
   )[0];
-}
-
-const indexWhereApp = async({query: {app_id}}) => {
-  return await pool.query(
-    `SELECT
-      a.name AS app_name,
-      ${fields}
-    FROM
-      roles r
-      INNER JOIN apps a ON a.id = r.app_id
-    WHERE
-      r.deleted_at IS NULL
-      AND a.deleted_at IS NULL
-      AND a.id = ?`,
-    [app_id]
-  );
 }
 
 /**
@@ -94,10 +84,11 @@ const index = async ({appId}) => {
     `SELECT
       ${fields}
     FROM
-      roles r
+      user_role ur
+      INNER JOIN roles r ON r.id = ur.role_id
       INNER JOIN apps a ON a.id = r.app_id
     WHERE
-      r.deleted_at IS NULL
+      ur.deleted_at IS NULL
       AND a.deleted_at IS NULL
       AND a.id IN (?)`,
     [appId]
@@ -109,24 +100,25 @@ const show = async ({params: {id}, appId}) =>
   await pool.query(
     `SELECT 
       ${fields} 
-    FROM roles r 
+    FROM user_role ur 
+    INNER JOIN roles r ON r.id = ur.role_id
     INNER JOIN apps a ON a.id = r.app_id
     WHERE 
-      r.deleted_at IS NULL 
+      ur.deleted_at IS NULL 
       AND a.deleted_at IS NULL
       AND a.id IN (?)
-      AND r.id = ?`,
+      AND ur.id = ?`,
     [appId, id]
   )
 )[0];
 
-const store = async ({ body: { name, app_id } }) => {
-  const payload = { name, app_id };
+const store = async ({ body: { user_id, role_id } }) => {
+  const payload = { user_id, role_id };
 
   try {
     conn = await util.promisify(pool.getConnection).bind(pool)();
     await conn.beginTransaction();
-    const res = await util.promisify(conn.query).bind(conn)('INSERT INTO roles SET ?', [payload]);
+    const res = await util.promisify(conn.query).bind(conn)('INSERT INTO user_role SET ?', [payload]);
     await conn.commit();
     return res;
   } catch (error) {
@@ -134,19 +126,19 @@ const store = async ({ body: { name, app_id } }) => {
   }
 };
 
-const update = async ({ params: {id}, body: { name, app_id } }) => {
-  const payload = { name, app_id };
+const update = async ({ params: {id}, body: { user_id, role_id } }) => {
+  const payload = { user_id, role_id };
   try {
     return await pool.query(
       `UPDATE
-          roles r
+          user_role ur
         SET        
-          r.name = ?,
-          r.app_id = ?,
-          r.updated_at = NOW()
+          ur.user_id = ?,
+          ur.role_id = ?,
+          ur.updated_at = NOW()
         WHERE
-          r.deleted_at IS NULL
-          AND r.id = ?`,
+          ur.deleted_at IS NULL
+          AND ur.id = ?`,
         [...Object.values(payload).map(val => val), id]
     )
   } catch(error) {
@@ -157,11 +149,11 @@ const update = async ({ params: {id}, body: { name, app_id } }) => {
 const destroy = async ({params: {id}}) => {
   return await pool.query(
     `UPDATE
-        roles r
+        user_role ur
       SET
-        r.deleted_at = NOW()
+        ur.deleted_at = NOW()
       WHERE
-        r.id = ?`,
+        ur.id = ?`,
       [id]
   )[0]
 }
@@ -174,5 +166,4 @@ module.exports = {
   destroy,
   datatable,
   totalData,
-  indexWhereApp,
 };
