@@ -23,17 +23,34 @@ router.get('/datatable', async (req, res, next) => {
         order_col: ['id', 'identifier', 'name', 'email', 'app_name', 'is_active'],
         total_data: (await user.totalData(req)).total_data,
         base_endpoint: `${process.env.BASE_URL}/users/datatable`,
+        message: 'users successfully displayed',
+        messageType: 'success',
       }
     })
   } catch (error) {
-    console.log(error)
-    res.sendStatus(500)
+    res.status(500).json({
+      message: 'fail to display users',
+      messageType: 'error',
+    })
   }
 })
 
 /* GET users me */
 router.get('/me', async (req, res, next) => {
-  res.json(await user.me(req))
+  try {
+    const queryResults = await user.me(req);
+    res.json({
+      ...queryResults,
+      message: 'me successfully displayed',
+      messageType: 'success',
+    })
+    
+  } catch (error) {
+    res.status(500).json({
+      message: 'fail to display me',
+      messageType: 'error',
+    })
+  }
 });
 
 /**
@@ -42,15 +59,31 @@ router.get('/me', async (req, res, next) => {
 
 /* GET users index */
 router.get('/', async (req, res, next) => {
-  res.json(await user.index(req));
+  try {
+    const queryResults = await user.index(req);
+    res.json(queryResults);
+  } catch (error) {
+    res.status(500).json({
+      message: 'fail to display users',
+      messageType: 'error',
+    })
+  }
 });
 
 /* GET users show */
 router.get('/:id', async (req, res, next) => {
   try {
-    res.json(await user.show(req))
+    const queryResults = await user.show(req);
+    res.json({
+      ...queryResults,
+      message: 'user successfully displayed',
+      messageType: 'success',
+    })
   } catch (error) {
-    res.sendStatus(500);
+    res.status(500).json({
+      message: 'fail to display users',
+      messageType: 'error',
+    })
   }
 });
 
@@ -70,10 +103,19 @@ router.post('/', async (req, res, next) => {
     };
     try {
       const queryResults = await user.store(payload);
-      if (!queryResults) return res.sendStatus(500);
-      res.sendStatus(200);
+      if (!queryResults) return res.status(500).json({
+        message: 'fail to add user',
+        messageType: 'success',
+      });
+      res.json({        
+        message: 'user successfully added',
+        messageType: 'success',
+      });
     } catch (error) {
-      return res.sendStatus(500);
+      return res.status(500).json({
+        message: 'fail to add user',
+        messageType: 'error',
+      })
     }
   });
 });
@@ -98,21 +140,45 @@ router.put('/:id', async (req, res, next) => {
     try {
       const queryResults = await user.update(payload);      
       if (queryResults.affectedRows) {
-        res.sendStatus(200);
+        res.json({
+          message: 'user successfully updated',
+          messageType: 'success',
+        })
       } else {
-        res.sendStatus(500);
+        res.status(500).json({
+          message: 'fail to update user',
+          messageType: 'error',
+        })
       }
     } catch (error) {
-      return res.sendStatus(500);
+      return res.status(500).json({
+        message: 'fail to update user',
+        messageType: 'error',
+      })
     }
   });
 });
 
 /* DELETE users destroy */
 router.delete('/:id', async (req, res, next) => {
-  if (!(await user.show(req))) {return res.sendStatus(403)}
-  await user.destroy(req)
-  res.sendStatus(200);
+  try {
+    if (!(await user.show(req))) {
+      return res.status(403).json({
+        message: 'fail to delete user, you don\'t have right access',
+        messageType: 'error',
+      })
+    }
+    await user.destroy(req)
+    res.json({
+      message: 'user successfully deleted',
+      messageType: 'success',
+    })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'fail to delete user',
+      messageType: 'error',
+    })
+  }  
 });
 
 module.exports = router;

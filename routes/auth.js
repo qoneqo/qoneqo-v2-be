@@ -5,8 +5,8 @@ const jwt = require('jsonwebtoken');
 const auth = require('../services/auth');
 const apps = require('../services/app/apps');
 
-const tokenAge = 60 * 1000;
-const tokenMaxAge = 1000 * tokenAge;
+const tokenAge = 60 * 10;
+const tokenMaxAge = 10 * tokenAge;
 const tokenSign = (user) => ({
   // iat: 'value setted by default libs',
   exp: Math.floor(Date.now() / 1000) + tokenAge,
@@ -35,7 +35,7 @@ router.post('/logout', (req, res, next) => {
 })
 
 router.post('/reset', async (req, res, next) => {
-  if (!req.cookies._token_reset) return res.sendStatus(403);
+  if (!req.cookies._token_reset) return res.status(403);
   jwt.verify(req.cookies._token_reset, process.env.JWT_SECRET_RESET, async (err, decoded) => {
     if (err) { 
       return res.clearCookie('_token').clearCookie('_token_reset').clearCookie('_filter').sendStatus(403); 
