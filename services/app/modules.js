@@ -109,8 +109,8 @@ const show = async ({params: {id}, appId}) =>
 )[0];
 
 const store = async ({ body: { name, path, method, parent_id, app_id } }) => {
+  if(!parent_id) parent_id = null;
   const payload = { name, path, method, parent_id, app_id };
-
   try {
     conn = await util.promisify(pool.getConnection).bind(pool)();
     await conn.beginTransaction();

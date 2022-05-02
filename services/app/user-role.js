@@ -114,15 +114,10 @@ const show = async ({params: {id}, appId}) =>
 
 const store = async ({ body: { user_id, role_id } }) => {
   const payload = { user_id, role_id };
-
   try {
-    conn = await util.promisify(pool.getConnection).bind(pool)();
-    await conn.beginTransaction();
-    const res = await util.promisify(conn.query).bind(conn)('INSERT INTO user_role SET ?', [payload]);
-    await conn.commit();
-    return res;
+    return await pool.query('INSERT INTO user_role SET ?', [payload])
   } catch (error) {
-    return 0;    
+    return 0;
   }
 };
 

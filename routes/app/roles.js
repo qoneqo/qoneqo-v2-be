@@ -36,11 +36,7 @@ router.get('/datatable', async (req, res, next) => {
 router.get('/where-app', async (req, res, next) => {
   try {  
     const queryResults = await role.indexWhereApp(req);
-    res.json({
-      ...queryResults,
-      message: 'roles successfully displayed',
-      messageType: 'success',
-    });
+    res.json(queryResults);
   } catch (error) {
     res.status(500).json({
       message: 'fail to display roles',
